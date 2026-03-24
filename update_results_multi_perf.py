@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 DATASETS = {
     "core": {"tickers_file": BASE_DIR / "tickers_core.csv", "output_file": BASE_DIR / "results_core.csv", "max_tickers": 100},
-    "ftse": {"tickers_file": BASE_DIR / "tickers_ftse.csv", "output_file": BASE_DIR / "results_ftse.csv", "max_tickers": 250},
+    "ftse": {"tickers_file": BASE_DIR / "tickers_ftse.csv", "output_file": BASE_DIR / "results_ftse.csv", "max_tickers": 500},
     "us": {"tickers_file": BASE_DIR / "tickers_us.csv", "output_file": BASE_DIR / "results_us.csv", "max_tickers": 500},
 }
 
