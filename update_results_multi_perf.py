@@ -80,22 +80,57 @@ def load_tickers(path: Path, max_tickers: int):
 
 def process_ticker(ticker: str):
     try:
-        data = yf.download(ticker, period="2y", auto_adjust=False, progress=False)
+        data = yf.download(
+            ticker,
+            period="2y",
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+        )
+
         if data.empty:
+            print(f"Skipped {ticker}: empty download")
             return None
 
         data = data.reset_index()
-        data.columns = [c[0] if isinstance(c, tuple) else c for c in data.columns]
-        required = {"Date", "Open", "High", "Low", "Close", "Volume"}
-        if not required.issubset(data.columns):
+
+        # Flatten yfinance columns safely
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = [c[0] if c[0] else c[1] for c in data.columns]
+
+        # Drop duplicate column names if Yahoo returns odd structures
+        data = data.loc[:, ~pd.Index(data.columns).duplicated()]
+
+        required = ["Date", "Open", "High", "Low", "Close", "Volume"]
+        missing = [col for col in required if col not in data.columns]
+        if missing:
+            print(f"Skipped {ticker}: missing columns {missing}")
             return None
 
+        # Force OHLCV columns to single numeric series
+        for col in ["Open", "High", "Low", "Close", "Volume"]:
+            if isinstance(data[col], pd.DataFrame):
+                data[col] = data[col].iloc[:, 0]
+            data[col] = pd.to_numeric(data[col], errors="coerce")
+
+        data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
         data["Ticker"] = ticker
+
+        if data["Close"].isna().all():
+            print(f"Skipped {ticker}: invalid Close data")
+            return None
+
         data = build_features(data)
 
         feature_cols = [
-            "Return_5d", "Return_10d", "Momentum_20", "Volatility_30",
-            "Trend_MA50", "Z_Score_20", "Volume_MA_Ratio", "RSI_14",
+            "Return_5d",
+            "Return_10d",
+            "Momentum_20",
+            "Volatility_30",
+            "Trend_MA50",
+            "Z_Score_20",
+            "Volume_MA_Ratio",
+            "RSI_14",
         ]
 
         for col in feature_cols:
@@ -104,6 +139,7 @@ def process_ticker(ticker: str):
 
         model_data = data.dropna(subset=feature_cols + ["Target"]).copy()
         if len(model_data) < 120:
+            print(f"Skipped {ticker}: insufficient model rows ({len(model_data)})")
             return None
 
         X = model_data[feature_cols]
@@ -114,16 +150,30 @@ def process_ticker(ticker: str):
         y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
         if len(X_train) < 80 or len(X_test) < 20:
+            print(f"Skipped {ticker}: insufficient train/test split")
             return None
 
         model = XGBClassifier(
-            n_estimators=120, max_depth=3, learning_rate=0.05, subsample=0.8,
-            colsample_bytree=0.8, min_child_weight=3, reg_alpha=0.1, reg_lambda=1.0,
-            random_state=42, eval_metric="logloss", n_jobs=1,
+            n_estimators=120,
+            max_depth=3,
+            learning_rate=0.05,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            min_child_weight=3,
+            reg_alpha=0.1,
+            reg_lambda=1.0,
+            random_state=42,
+            eval_metric="logloss",
+            n_jobs=1,
         )
         model.fit(X_train, y_train)
 
         test_preds = model.predict(X_test)
+        accuracy_pct = accuracy_score(y_test, test_preds) * 100
+        precision_pct = precision_score(y_test, test_preds, zero_division=0) * 100
+        recall_pct = recall_score(y_test, test_preds, zero_division=0) * 100
+        f1_pct = f1_score(y_test, test_preds, zero_division=0) * 100
+
         latest_features = X.tail(1)
         latest_price = float(model_data["Close"].iloc[-1])
         prob_up = float(model.predict_proba(latest_features)[0][1]) * 100
@@ -131,22 +181,39 @@ def process_ticker(ticker: str):
         latest_volatility_30 = float(model_data["Volatility_30"].iloc[-1])
         latest_rsi = float(model_data["RSI_14"].iloc[-1])
 
-        feature_importance = pd.Series(model.feature_importances_, index=feature_cols).sort_values(ascending=False)
+        feature_importance = pd.Series(
+            model.feature_importances_, index=feature_cols
+        ).sort_values(ascending=False)
         top_features = ", ".join(feature_importance.head(3).index.tolist())
 
         score = score_row(pd.Series({
             "Predicted Prob Up (%)": prob_up,
-            "Accuracy (%)": accuracy_score(y_test, test_preds) * 100,
-            "Precision (%)": precision_score(y_test, test_preds, zero_division=0) * 100,
-            "F1 Score (%)": f1_score(y_test, test_preds, zero_division=0) * 100,
+            "Accuracy (%)": accuracy_pct,
+            "Precision (%)": precision_pct,
+            "F1 Score (%)": f1_pct,
             "RSI_14": latest_rsi,
         }))
 
         latest_idx = model_data.index[-1]
         end_idx = latest_idx + 5 if (latest_idx + 5) in data.index else None
         end_close_5d = float(data.loc[end_idx, "Close"]) if end_idx is not None else None
-        forward_return_5d_pct = ((end_close_5d / latest_price) - 1) * 100 if end_close_5d is not None else None
-        hit = 1 if (forward_return_5d_pct is not None and forward_return_5d_pct > 2.0) else 0 if forward_return_5d_pct is not None else None
+        forward_return_5d_pct = (
+            ((end_close_5d / latest_price) - 1) * 100
+            if end_close_5d is not None else None
+        )
+        hit = (
+            1 if (forward_return_5d_pct is not None and forward_return_5d_pct > 2.0)
+            else 0 if forward_return_5d_pct is not None
+            else None
+        )
+
+        print(
+            f"{ticker}: price={latest_price:.2f}, "
+            f"prob_up={prob_up:.1f}, "
+            f"score={score}, "
+            f"rsi={latest_rsi:.1f}, "
+            f"vol={latest_volatility_30:.4f}"
+        )
 
         return {
             "result": {
@@ -155,10 +222,10 @@ def process_ticker(ticker: str):
                 "Daily Return": latest_return_1d,
                 "Volatility": latest_volatility_30,
                 "Predicted Prob Up (%)": prob_up,
-                "Accuracy (%)": accuracy_score(y_test, test_preds) * 100,
-                "Precision (%)": precision_score(y_test, test_preds, zero_division=0) * 100,
-                "Recall (%)": recall_score(y_test, test_preds, zero_division=0) * 100,
-                "F1 Score (%)": f1_score(y_test, test_preds, zero_division=0) * 100,
+                "Accuracy (%)": accuracy_pct,
+                "Precision (%)": precision_pct,
+                "Recall (%)": recall_pct,
+                "F1 Score (%)": f1_pct,
                 "RSI_14": latest_rsi,
                 "Top Features": top_features,
                 "Score": score,
@@ -172,8 +239,9 @@ def process_ticker(ticker: str):
                 "end_close_5d": end_close_5d,
                 "forward_return_5d_pct": forward_return_5d_pct,
                 "hit": hit,
-            }
+            },
         }
+
     except Exception as e:
         print(f"Failed {ticker}: {e}")
         return None
@@ -199,19 +267,24 @@ def refresh_dataset(name: str, cfg: dict):
     perf_rows = []
     pick_date = datetime.now(timezone.utc).date().isoformat()
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        for item in executor.map(process_ticker, tickers):
-            if item is not None:
-                results.append(item["result"])
-                perf = item["perf"]
-                perf["market"] = name
-                perf["pick_date"] = pick_date
-                perf_rows.append(perf)
+    for ticker in tickers:
+        print(f"Processing {ticker}...")
+        item = process_ticker(ticker)
+        if item is not None:
+            results.append(item["result"])
+            perf = item["perf"]
+            perf["market"] = name
+            perf["pick_date"] = pick_date
+            perf_rows.append(perf)
 
     if not results:
         raise RuntimeError(f"No results were generated for {name}")
 
-    df = pd.DataFrame(results).sort_values(["Score", "Predicted Prob Up (%)"], ascending=False)
+    df = pd.DataFrame(results)
+    dupe_check = df[["Latest Price ($)", "Predicted Prob Up (%)", "RSI_14"]].duplicated().sum()
+    print(f"{name}: duplicated metric rows = {dupe_check}")
+
+    df = df.sort_values(["Score", "Predicted Prob Up (%)"], ascending=False)
     df.to_csv(cfg["output_file"], index=False)
     print(f"Saved {len(df)} rows to {cfg['output_file']}")
     return perf_rows
