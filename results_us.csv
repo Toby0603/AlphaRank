@@ -1,0 +1,3 @@
+Ticker,Latest Price ($),Daily Return,Volatility,Predicted Prob Up (%),Accuracy (%),Precision (%),Recall (%),F1 Score (%),RSI_14,Top Features,Score,Rating
+MSFT,498.6,0.006,0.028,64.8,55.4,58.0,50.5,54.2,47.8,"Trend_MA50, Return_10d, RSI_14",60.1,Watchlist
+NVDA,132.5,0.015,0.049,69.1,56.7,59.8,53.1,56.0,44.0,"Momentum_20, Volume_MA_Ratio, RSI_14",62.9,Watchlist

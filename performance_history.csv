@@ -1,0 +1,5 @@
+pick_date,market,Ticker,pick_prob_up,pick_score,start_close,end_close_5d,forward_return_5d_pct,hit
+2026-03-20,core,AAPL,68.2,61.5,215.4,220.9,2.55,1
+2026-03-20,core,TSCO.L,62.5,59.7,3.21,3.18,-0.93,0
+2026-03-20,ftse,AZN.L,66.4,64.2,121.3,124.0,2.23,1
+2026-03-20,us,MSFT,64.8,60.1,498.6,506.4,1.56,0
