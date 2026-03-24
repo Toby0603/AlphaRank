@@ -1,0 +1,8 @@
+Ticker,Latest Price ($),Daily Return,Volatility,Predicted Prob Up (%),Accuracy (%),Precision (%),Recall (%),F1 Score (%),RSI_14,Top Features
+AAPL,215.4,0.012,0.034,68.2,57.1,60.3,52.4,56.1,41.2,"Momentum_20, RSI_14, Volume_MA_Ratio"
+MSFT,498.6,0.006,0.028,64.8,55.4,58.0,50.5,54.2,47.8,"Trend_MA50, Return_10d, RSI_14"
+GOOGL,178.2,-0.003,0.032,59.7,53.6,54.8,49.7,52.1,52.0,"Return_5d, Z_Score_20, RSI_14"
+TSCO.L,3.21,0.004,0.022,62.5,56.2,57.6,51.3,54.1,38.9,"RSI_14, Momentum_20, Volatility"
+SHEL.L,28.91,-0.001,0.026,57.9,52.8,53.9,48.1,50.7,61.5,"Volatility, Trend_MA50, RSI_14"
+AZN.L,121.3,0.007,0.024,66.4,58.2,61.1,53.7,57.3,35.4,"Momentum_20, RSI_14, Return_10d"
+HSBA.L,7.04,0.002,0.021,54.1,51.5,52.0,47.4,49.3,58.6,"Volume_MA_Ratio, RSI_14, Trend_MA50"
