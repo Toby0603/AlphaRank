@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "0 5 * * *"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
@@ -26,16 +29,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas yfinance xgboost scikit-learn
 
-      - name: Refresh results.csv
-        run: python update_results.py
+      - name: Run model refresh
+        run: python update_results_multi_perf.py
 
       - name: Commit updated results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add results.csv
-          git diff --staged --quiet || git commit -m "Auto-refresh results.csv"
+          git add results_core.csv results_ftse.csv results_us.csv performance_history.csv
+          git diff --staged --quiet || git commit -m "Auto-refresh market results and performance"
 
       - name: Push changes
         run: git push
-
