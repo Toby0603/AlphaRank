@@ -202,7 +202,7 @@ def process_ticker(ticker: str):
             if end_close_5d is not None else None
         )
         hit = (
-            1 if (forward_return_5d_pct is not None and forward_return_5d_pct > 2.0)
+            1 if (forward_return_5d_pct is not None and forward_return_5d_pct > 1.5)
             else 0 if forward_return_5d_pct is not None
             else None
         )
@@ -268,11 +268,11 @@ def refresh_dataset(name: str, cfg: dict):
     pick_date = datetime.now(timezone.utc).date().isoformat()
 
     for ticker in tickers:
-        print(f"Processing {ticker}...")
-        item = process_ticker(ticker)
-        
-        if item is not None:
-            results.append(item["result"])
+    print(f"Processing {ticker}...")
+    item = process_ticker(ticker)
+
+    if item is not None:
+        results.append(item["result"])
 
         if item["result"].get("Rating") == "Strong Buy":
             perf = item["perf"]
