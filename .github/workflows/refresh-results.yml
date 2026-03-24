@@ -26,3 +26,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas yfinance xgboost scikit-learn
 
+      - name: Refresh results.csv
+        run: python update_results.py
+
+      - name: Commit updated results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results.csv
+          git diff --staged --quiet || git commit -m "Auto-refresh results.csv"
+
+      - name: Push changes
+        run: git push
+
