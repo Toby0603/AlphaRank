@@ -3,6 +3,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+st.write("App started")
+
 st.set_page_config(page_title="AlphaRank", page_icon="📈", layout="wide")
 
 BASE_DIR = Path(__file__).resolve().parent
