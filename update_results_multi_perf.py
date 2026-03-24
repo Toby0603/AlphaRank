@@ -268,18 +268,18 @@ def refresh_dataset(name: str, cfg: dict):
     pick_date = datetime.now(timezone.utc).date().isoformat()
 
     for ticker in tickers:
-    print(f"Processing {ticker}...")
-    item = process_ticker(ticker)
+        print(f"Processing {ticker}...")
+        item = process_ticker(ticker)
 
-    if item is not None:
-        results.append(item["result"])
+        if item is not None:
+            results.append(item["result"])
 
-        if item["result"].get("Rating") == "Strong Buy":
-            perf = item["perf"]
-            perf["market"] = name
-            perf["pick_date"] = pick_date
-            perf["rating"] = item["result"].get("Rating")
-            perf_rows.append(perf)
+            if item["result"].get("Rating") == "Strong Buy":
+                perf = item["perf"]
+                perf["market"] = name
+                perf["pick_date"] = pick_date
+                perf["rating"] = item["result"].get("Rating")
+                perf_rows.append(perf)
 
     if not results:
         raise RuntimeError(f"No results were generated for {name}")
