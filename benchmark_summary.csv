@@ -1,4 +1,4 @@
 market,week_start,picks,hit_rate,avg_return_5d_pct,avg_pick_prob_up,avg_pick_score,benchmark_return_5d_pct,alpha_vs_benchmark_pct,benchmark_ticker
-core,2026-03-23,6,,,88.08431029319763,70.0,,,VT
-ftse,2026-03-23,6,,,78.94438703854878,71.56666666666666,,,ISF.L
-us,2026-03-23,18,,,82.82233874003093,72.46666666666665,,,SPY
+core,2026-03-23,6,,,88.08431029319763,70.0,,,^GSPC
+ftse,2026-03-23,7,,,79.21603407178607,71.37142857142858,,,^FTSE
+us,2026-03-23,20,,,82.6404932141304,72.6,,,SPY
