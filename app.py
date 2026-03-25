@@ -150,8 +150,8 @@ with st.sidebar:
     market = st.selectbox("Market", list(DATA_FILES.keys()), index=0)
 
     st.subheader("Filters")
-    min_prob = st.slider("Minimum probability up (%)", 0, 100, 55)
-    min_score = st.slider("Minimum score", 0, 100, 55)
+    min_prob = st.slider("Minimum probability up (%)", 0, 100, 50)
+    min_score = st.slider("Minimum score", 0, 100, 50)
     max_vol = st.slider("Maximum volatility", 0.0, 0.20, 0.08, 0.005)
     min_accuracy = st.slider("Minimum accuracy (%)", 0, 100, 50)
     min_precision = st.slider("Minimum precision (%)", 0, 100, 50)
