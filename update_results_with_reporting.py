@@ -58,7 +58,7 @@ def build_features(df):
     df["Volume_MA_Ratio"] = df["Volume"] / df["Volume"].rolling(20).mean()
     df["RSI_14"] = compute_rsi(df["Close"], 14)
     df["forward_return_5d"] = df["Close"].shift(-5) / df["Close"] - 1
-    df["Target"] = (forward_return_5d > 0.015).astype(int)
+    df["Target"] = ("df["forward_return_5d"] > 0.015).astype(int)
     return df
 
 def load_tickers(path, max_tickers):
