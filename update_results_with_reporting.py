@@ -187,27 +187,27 @@ def refresh_dataset(name, cfg):
             perf["rating"] = item["result"].get("Rating")
             perf_rows.append(perf)
 
-    if results:
-        results_df = pd.DataFrame(results)
-        results_df.to_csv(cfg["output_file"], index=False)
-        print(f"Saved {len(results)} rows to {cfg['output_file']}")
-    else:
-        print(f"No valid results for {name}")
+        if results:
+            results_df = pd.DataFrame(results)
+            results_df.to_csv(cfg["output_file"], index=False)
+            print(f"Saved {len(results)} rows to {cfg['output_file']}")
+        else:
+            print(f"No valid results for {name}")
 
-    if failed_tickers:
-    failed_df = pd.DataFrame(failed_tickers)
+        if failed_tickers:
+        failed_df = pd.DataFrame(failed_tickers)
 
-    if FAILED_FILE.exists():
-        try:
-            old_failed = pd.read_csv(FAILED_FILE)
-            if not old_failed.empty:
-                failed_df = pd.concat([old_failed, failed_df], ignore_index=True)
-        except pd.errors.EmptyDataError:
-            pass
+        if FAILED_FILE.exists():
+            try:
+                old_failed = pd.read_csv(FAILED_FILE)
+                if not old_failed.empty:
+                    failed_df = pd.concat([old_failed, failed_df], ignore_index=True)
+            except pd.errors.EmptyDataError:
+                pass
 
-    failed_df.drop_duplicates(subset=["Ticker"], inplace=True)
-    failed_df.to_csv(FAILED_FILE, index=False)
-    print(f"Saved {len(failed_df)} failed tickers to {FAILED_FILE}")
+        failed_df.drop_duplicates(subset=["Ticker"], inplace=True)
+        failed_df.to_csv(FAILED_FILE, index=False)
+        print(f"Saved {len(failed_df)} failed tickers to {FAILED_FILE}")
 
     return perf_rows
     
