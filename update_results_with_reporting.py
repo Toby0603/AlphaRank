@@ -153,6 +153,10 @@ def refresh_dataset(name, cfg):
         item = process_ticker(ticker)
         
         if item is not None:
+            failed_tickers.append({
+                "Ticker": ticker,
+                "Reason": "No data returned"
+            })
             continue
 
         if isinstance(item, dict) and item.get("failed"):
@@ -161,9 +165,9 @@ def refresh_dataset(name, cfg):
                 "Reason": item["reason"]
             })
             continue
-                      
-                                  
+                                   
         results.append(item["result"])
+        
         if item["result"].get("Rating") == "Strong Buy":
             perf = item["perf"]
             perf["market"] = name
