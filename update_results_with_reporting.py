@@ -66,7 +66,7 @@ def load_tickers(path, max_tickers):
     df["Ticker"] = df["Ticker"].astype(str).str.strip().str.upper()
     return [t for t in df["Ticker"].tolist() if t][:max_tickers]
 
-def download_one(ticker, period="2y"):
+def download_one(ticker, period="4y"):
     data = yf.download(ticker, period=period, auto_adjust=False, progress=False, threads=False)
     if data.empty:
         return pd.DataFrame()
