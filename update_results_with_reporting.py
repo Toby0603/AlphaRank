@@ -188,7 +188,7 @@ def refresh_dataset(name, cfg):
             failed_df = pd.concat([old_failed, failed_df], ignore_index=True)
 
         failed_df.drop_duplicates(subset=["Ticker"], inplace=True)
-        failed_df.to_csv(FAILED_FILE, index=false)
+        failed_df.to_csv(FAILED_FILE, index=False)
 
         print(f"Saved {len(failed_df)} failed tickers to {FAILED_FILE}")
             
