@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 
 BASE_DIR = Path(__file__).resolve().parent
 DATASETS = {
-    "core": {"tickers_file": BASE_DIR / "tickers_core.csv", "output_file": BASE_DIR / "results_core.csv", "max_tickers": 50, "benchmark": "VT"},
-    "ftse": {"tickers_file": BASE_DIR / "tickers_ftse.csv", "output_file": BASE_DIR / "results_ftse.csv", "max_tickers": 89, "benchmark": "ISF.L"},
+    "core": {"tickers_file": BASE_DIR / "tickers_core.csv", "output_file": BASE_DIR / "results_core.csv", "max_tickers": 50, "benchmark": "^GSPC"},
+    "ftse": {"tickers_file": BASE_DIR / "tickers_ftse.csv", "output_file": BASE_DIR / "results_ftse.csv", "max_tickers": 89, "benchmark": "^FTSE"},
     "us": {"tickers_file": BASE_DIR / "tickers_us.csv", "output_file": BASE_DIR / "results_us.csv", "max_tickers": 168, "benchmark": "SPY"},
-    "europe": {"tickers_file": BASE_DIR / "tickers_europe.csv", "output_file": BASE_DIR / "results_europe.csv", "max_tickers": 250, "benchmark": "VGK"},
+    "europe": {"tickers_file": BASE_DIR / "tickers_europe.csv", "output_file": BASE_DIR / "results_europe.csv", "max_tickers": 250, "benchmark": "STOXX50E"},
 }
 PERF_FILE = BASE_DIR / "performance_history.csv"
 WEEKLY_FILE = BASE_DIR / "weekly_summary.csv"
@@ -40,7 +40,7 @@ def rating_from_score(score):
     if score >= 70: return "Strong Buy"
     if score >= 60: return "Watchlist"
     if score >= 50: return "Neutral"
-    return "Avoid"
+    return "Avoid/Short"
 
 def build_features(df):
     df = df.copy()
