@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 import pandas as pd
 import streamlit as st
+import yfinance as yf
+import altair as alt
 
 st.set_page_config(page_title="AlphaRank", page_icon="📈", layout="wide")
 
@@ -13,19 +15,12 @@ DATA_FILES = {
     "Europe": BASE_DIR / "results_europe.csv",
 }
 PERF_FILE = BASE_DIR / "performance_history.csv"
+WEEKLY_FILE = BASE_DIR / "weekly_summary.csv"
+BENCH_FILE = BASE_DIR / "benchmark_summary.csv"
 
 REQUIRED_COLUMNS = [
-    "Ticker",
-    "Latest Price ($)",
-    "Daily Return",
-    "Volatility",
-    "Predicted Prob Up (%)",
-    "Accuracy (%)",
-    "Precision (%)",
-    "Recall (%)",
-    "F1 Score (%)",
-    "RSI_14",
-    "Top Features",
+    "Ticker","Latest Price ($)","Daily Return","Volatility","Predicted Prob Up (%)",
+    "Accuracy (%)","Precision (%)","Recall (%)","F1 Score (%)","RSI_14","Top Features",
 ]
 
 def init_session():
@@ -38,45 +33,27 @@ def check_login():
     init_session()
     if st.session_state.logged_in:
         return True
-
     st.title("AlphaRank Login")
-    st.caption("Private access. For informational use only.")
-
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
-
     if st.button("Login", type="primary"):
-        app_username = os.environ.get("APP_USERNAME")
-        app_password = os.environ.get("APP_PASSWORD")
-
-        if app_username and app_password:
-            if username == app_username and password == app_password:
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
+        u = os.environ.get("APP_USERNAME")
+        p = os.environ.get("APP_PASSWORD")
+        if u and p and username == u and password == p:
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.rerun()
         else:
-            st.error("Login is not configured. Add APP_USERNAME and APP_PASSWORD as environment variables.")
-
+            st.error("Invalid username or password.")
     return False
 
-def score_row(row: pd.Series):
-    needed = ["Predicted Prob Up (%)", "Accuracy (%)", "Precision (%)", "F1 Score (%)", "RSI_14"]
+def score_row(row):
+    needed = ["Predicted Prob Up (%)","Accuracy (%)","Precision (%)","F1 Score (%)","RSI_14"]
     if any(pd.isna(row.get(col)) for col in needed):
         return None
-
     rsi = row["RSI_14"]
     bonus = 10 if rsi < 30 else 5 if rsi < 40 else -10 if rsi > 70 else -5 if rsi > 60 else 0
-
-    return round(
-        0.40 * row["Predicted Prob Up (%)"]
-        + 0.20 * row["Accuracy (%)"]
-        + 0.25 * row["Precision (%)"]
-        + 0.15 * row["F1 Score (%)"]
-        + bonus,
-        1,
-    )
+    return round(0.40*row["Predicted Prob Up (%)"] + 0.20*row["Accuracy (%)"] + 0.25*row["Precision (%)"] + 0.15*row["F1 Score (%)"] + bonus, 1)
 
 def rating_from_score(score):
     if pd.isna(score):
@@ -90,50 +67,46 @@ def rating_from_score(score):
     return "Avoid"
 
 @st.cache_data(ttl=300)
-def load_results(path_str: str):
+def load_results(path_str):
     path = Path(path_str)
     if not path.exists():
         return pd.DataFrame()
-
     df = pd.read_csv(path)
-    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
-    if missing:
-        raise ValueError(f"Missing required columns in {path.name}: {', '.join(missing)}")
-
-    numeric_cols = [
-        "Latest Price ($)",
-        "Daily Return",
-        "Volatility",
-        "Predicted Prob Up (%)",
-        "Accuracy (%)",
-        "Precision (%)",
-        "Recall (%)",
-        "F1 Score (%)",
-        "RSI_14",
-    ]
-    for col in numeric_cols:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
+    for col in ["Latest Price ($)","Daily Return","Volatility","Predicted Prob Up (%)","Accuracy (%)","Precision (%)","Recall (%)","F1 Score (%)","RSI_14"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     if "Score" not in df.columns:
         df["Score"] = df.apply(score_row, axis=1)
     if "Rating" not in df.columns:
         df["Rating"] = df["Score"].apply(rating_from_score)
-
-    df = df.sort_values(["Score", "Predicted Prob Up (%)"], ascending=False, na_position="last")
-    return df
+    return df.sort_values(["Score","Predicted Prob Up (%)"], ascending=False)
 
 @st.cache_data(ttl=300)
-def load_performance(path_str: str):
+def load_csv(path_str, date_cols=None):
     path = Path(path_str)
     if not path.exists():
         return pd.DataFrame()
     df = pd.read_csv(path)
-    for col in ["forward_return_5d_pct", "hit", "pick_prob_up", "pick_score"]:
+    for col in date_cols or []:
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-    if "pick_date" in df.columns:
-        df["pick_date"] = pd.to_datetime(df["pick_date"], errors="coerce")
+            df[col] = pd.to_datetime(df[col], errors="coerce")
     return df
+
+@st.cache_data(ttl=900)
+def load_ticker_chart(ticker):
+    data = yf.download(ticker, period="6mo", auto_adjust=False, progress=False, threads=False)
+    if data.empty:
+        return pd.DataFrame()
+    data = data.reset_index()
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = [c[0] if c[0] else c[1] for c in data.columns]
+    data = data.loc[:, ~pd.Index(data.columns).duplicated()]
+    if "Date" in data.columns and "Close" in data.columns:
+        data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
+        data["Close"] = pd.to_numeric(data["Close"], errors="coerce")
+        data["MA50"] = data["Close"].rolling(50).mean()
+        return data[["Date","Close","MA50"]].dropna(subset=["Date","Close"])
+    return pd.DataFrame()
 
 def metric_format(value, suffix=""):
     if pd.isna(value):
@@ -146,38 +119,22 @@ if not check_login():
 with st.sidebar:
     st.title("AlphaRank")
     st.write(f"Logged in as: {st.session_state.username}")
-
     market = st.selectbox("Market", list(DATA_FILES.keys()), index=0)
-
-    st.subheader("Filters")
-    min_prob = st.slider("Minimum probability up (%)", 0, 100, 50)
-    min_score = st.slider("Minimum score", 0, 100, 50)
+    min_prob = st.slider("Minimum probability up (%)", 0, 100, 55)
+    min_score = st.slider("Minimum score", 0, 100, 55)
     max_vol = st.slider("Maximum volatility", 0.0, 0.20, 0.08, 0.005)
-    min_accuracy = st.slider("Minimum accuracy (%)", 0, 100, 50)
-    min_precision = st.slider("Minimum precision (%)", 0, 100, 50)
-    rsi_low, rsi_high = st.slider("RSI range", 0, 100, (0, 70))
-    ratings = st.multiselect(
-        "Ratings",
-        ["Strong Buy", "Watchlist", "Neutral", "Avoid"],
-        default=["Strong Buy", "Watchlist", "Neutral"],
-    )
-    search = st.text_input("Ticker contains", "")
-
+    strong_only = st.toggle("Strong Buy only", value=False)
     if st.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.username = ""
         st.rerun()
 
-try:
-    df = load_results(str(DATA_FILES[market]))
-    perf = load_performance(str(PERF_FILE))
-except Exception as e:
-    st.error(f"Could not load data: {e}")
-    st.stop()
+df = load_results(str(DATA_FILES[market]))
+perf = load_csv(str(PERF_FILE), ["pick_date"])
+weekly = load_csv(str(WEEKLY_FILE), ["week_start"])
+bench = load_csv(str(BENCH_FILE), ["week_start"])
 
 st.title("📈 AlphaRank Screener")
-st.caption("Multi-market stock ranking dashboard with performance tracking. Educational use only. Not financial advice.")
-
 if df.empty:
     st.warning("No results found for this market yet.")
     st.stop()
@@ -186,12 +143,8 @@ filtered = df.copy()
 filtered = filtered[filtered["Predicted Prob Up (%)"] >= min_prob]
 filtered = filtered[filtered["Score"] >= min_score]
 filtered = filtered[filtered["Volatility"] <= max_vol]
-filtered = filtered[filtered["Accuracy (%)"] >= min_accuracy]
-filtered = filtered[filtered["Precision (%)"] >= min_precision]
-filtered = filtered[(filtered["RSI_14"] >= rsi_low) & (filtered["RSI_14"] <= rsi_high)]
-filtered = filtered[filtered["Rating"].isin(ratings)]
-if search:
-    filtered = filtered[filtered["Ticker"].astype(str).str.contains(search.upper(), case=False, na=False)]
+if strong_only:
+    filtered = filtered[filtered["Rating"] == "Strong Buy"]
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Stocks shown", len(filtered))
@@ -199,74 +152,52 @@ c2.metric("Avg probability up", metric_format(filtered["Predicted Prob Up (%)"].
 c3.metric("Avg score", metric_format(filtered["Score"].mean()))
 c4.metric("Strong buys", int((filtered["Rating"] == "Strong Buy").sum()))
 
-st.subheader(f"Top opportunities — {market}")
-top_cols = ["Ticker", "Predicted Prob Up (%)", "Score", "Rating", "Accuracy (%)", "Precision (%)", "RSI_14"]
-st.dataframe(filtered.head(10)[top_cols], use_container_width=True, hide_index=True)
+tabs = st.tabs(["Screener", "Charts", "Weekly Summary", "Benchmarking", "Weekly Output"])
 
-left, right = st.columns([1.3, 1])
+with tabs[0]:
+    st.dataframe(filtered.head(10)[["Ticker","Predicted Prob Up (%)","Score","Rating","Accuracy (%)","Precision (%)","RSI_14"]], use_container_width=True, hide_index=True)
 
-with left:
-    st.subheader("Full ranked list")
-    display_cols = [
-        "Ticker",
-        "Latest Price ($)",
-        "Predicted Prob Up (%)",
-        "Score",
-        "Rating",
-        "Accuracy (%)",
-        "Precision (%)",
-        "F1 Score (%)",
-        "RSI_14",
-        "Volatility",
-        "Top Features",
-    ]
-    st.dataframe(filtered[display_cols], use_container_width=True, hide_index=True)
-
-with right:
-    st.subheader("Ticker detail")
+with tabs[1]:
     tickers = filtered["Ticker"].tolist() if not filtered.empty else df["Ticker"].tolist()
-    selected_ticker = st.selectbox("Choose a ticker", tickers, index=0 if tickers else None)
-    if selected_ticker:
-        row = df[df["Ticker"] == selected_ticker].iloc[0]
-        st.metric("Probability up", metric_format(row["Predicted Prob Up (%)"], "%"))
-        st.metric("Score", metric_format(row["Score"]))
-        st.metric("Rating", row["Rating"])
-        st.metric("Accuracy", metric_format(row["Accuracy (%)"], "%"))
-        st.metric("Precision", metric_format(row["Precision (%)"], "%"))
-        st.metric("F1", metric_format(row["F1 Score (%)"], "%"))
-        st.metric("RSI 14", metric_format(row["RSI_14"]))
-        st.metric("Volatility", metric_format(row["Volatility"], "%"))
-        st.markdown("**Top features**")
-        st.write(row.get("Top Features", ""))
+    chart_ticker = st.selectbox("Ticker for chart", tickers, index=0 if tickers else None)
+    if chart_ticker:
+        chart_df = load_ticker_chart(chart_ticker)
+        if chart_df.empty:
+            st.info("No chart data available.")
+        else:
+            chart_long = chart_df.melt("Date", value_vars=["Close","MA50"], var_name="Series", value_name="Value")
+            st.altair_chart(
+                alt.Chart(chart_long).mark_line().encode(x="Date:T", y="Value:Q", color="Series:N"),
+                use_container_width=True
+            )
 
-st.markdown("---")
-st.subheader("Performance tracking")
+with tabs[2]:
+    wk = weekly[weekly["market"] == market.lower()].copy() if not weekly.empty else pd.DataFrame()
+    if wk.empty:
+        st.info("No weekly summary yet.")
+    else:
+        st.dataframe(wk.sort_values("week_start", ascending=False), use_container_width=True, hide_index=True)
 
-if perf.empty:
-    st.info("No performance history yet. Run the backend refresh workflow a few times to build history.")
-else:
-    perf_market = perf[perf["market"] == market.lower()].copy()
+with tabs[3]:
+    b = bench[bench["market"] == market.lower()].copy() if not bench.empty else pd.DataFrame()
+    if b.empty:
+        st.info("No benchmark summary yet.")
+    else:
+        st.dataframe(b.sort_values("week_start", ascending=False), use_container_width=True, hide_index=True)
+        st.altair_chart(
+            alt.Chart(b).mark_line(point=True).encode(x="week_start:T", y="alpha_vs_benchmark_pct:Q"),
+            use_container_width=True
+        )
 
-    p1, p2, p3, p4 = st.columns(4)
-    p1.metric("Tracked picks", len(perf_market))
-    p2.metric("Hit rate", metric_format(perf_market["hit"].mean() * 100, "%"))
-    p3.metric("Avg 5d return", metric_format(perf_market["forward_return_5d_pct"].mean(), "%"))
-    p4.metric("Avg pick score", metric_format(perf_market["pick_score"].mean()))
-
-    st.markdown("**Performance by pick date**")
-    by_date = perf_market.groupby("pick_date", dropna=True).agg(
-        picks=("Ticker", "count"),
-        hit_rate=("hit", "mean"),
-        avg_return_5d=("forward_return_5d_pct", "mean"),
-    ).reset_index().sort_values("pick_date", ascending=False)
-    if not by_date.empty:
-        by_date["hit_rate"] = by_date["hit_rate"] * 100
-        st.dataframe(by_date, use_container_width=True, hide_index=True)
-
-    st.markdown("**Recent tracked picks**")
-    recent_cols = ["pick_date", "market", "Ticker", "pick_prob_up", "pick_score", "start_close", "end_close_5d", "forward_return_5d_pct", "hit"]
-    available = [c for c in recent_cols if c in perf_market.columns]
-    st.dataframe(perf_market.sort_values("pick_date", ascending=False)[available], use_container_width=True, hide_index=True)
+with tabs[4]:
+    wk = weekly[weekly["market"] == market.lower()].copy() if not weekly.empty else pd.DataFrame()
+    if wk.empty:
+        st.info("No weekly output yet.")
+    else:
+        latest_week = wk["week_start"].max()
+        latest = wk[wk["week_start"] == latest_week]
+        st.dataframe(latest, use_container_width=True, hide_index=True)
+        st.download_button("Download latest weekly output", latest.to_csv(index=False).encode("utf-8"), file_name=f"alpharank_{market.lower()}_weekly_output.csv", mime="text/csv")
 
 st.markdown("---")
 st.caption("This dashboard is for ranking and research. It does not provide investment advice.")
