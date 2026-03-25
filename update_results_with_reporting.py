@@ -57,8 +57,8 @@ def build_features(df):
     df["Z_Score_20"] = (df["Close"] - rm20) / rs20.replace(0, float("nan"))
     df["Volume_MA_Ratio"] = df["Volume"] / df["Volume"].rolling(20).mean()
     df["RSI_14"] = compute_rsi(df["Close"], 14)
-    future_return_5d = df["Close"].shift(-5) / df["Close"] - 1
-    df["Target"] = (future_return_5d > 0.02).astype(int)
+    df["forward_return_5d"] = df["Close"].shift(-5) / df["Close"] - 1
+    df["Target"] = (future_return_5d > 0.015).astype(int)
     return df
 
 def load_tickers(path, max_tickers):
@@ -106,11 +106,38 @@ def process_ticker(ticker):
         split_idx = int(len(model_data) * 0.8)
         X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
         y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
+        
+        pos_count = (y_train == 1).sum()
+        neg_count = (y_train == 0).sum()
+        
+        if pos_count == 0 or neg_count == 0:
+            return {
+                "failed": True,
+                "ticker": ticker,
+                "reason": Only one class in training data
+            }
+        scale_pos_weight = neg_count / pos_count
+
+        
         if len(X_train) < 80 or len(X_test) < 20:
             return None
-        model = XGBClassifier(n_estimators=120,max_depth=3,learning_rate=0.05,subsample=0.8,colsample_bytree=0.8,min_child_weight=3,reg_alpha=0.1,reg_lambda=1.0,random_state=42,eval_metric="logloss",n_jobs=1)
+        model = XGBClassifier(
+            n_estimators=120,
+            max_depth=3,
+            learning_rate=0.05,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            min_child_weight=3,
+            reg_alpha=0.1,
+            reg_lambda=1.0,
+            scale_pos_weight=scale_pos_weight,
+            random_state=42,
+            eval_metric="logloss",
+            n_jobs=1)
         model.fit(X_train, y_train)
-        test_preds = model.predict(X_test)
+        test_probs = model.predict_proba(X_test)[:, 1]
+        classification_threshold = 0.6
+        test_preds = (test_probs >= classification_threshold).astype(int)
         accuracy_pct = accuracy_score(y_test, test_preds) * 100
         precision_pct = precision_score(y_test, test_preds, zero_division=0) * 100
         recall_pct = recall_score(y_test, test_preds, zero_division=0) * 100
