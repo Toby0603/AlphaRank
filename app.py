@@ -10,6 +10,7 @@ DATA_FILES = {
     "Core": BASE_DIR / "results_core.csv",
     "FTSE": BASE_DIR / "results_ftse.csv",
     "US": BASE_DIR / "results_us.csv",
+    "Europe": BASE_DIR / "results_europe.csv",
 }
 PERF_FILE = BASE_DIR / "performance_history.csv"
 
