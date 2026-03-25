@@ -114,7 +114,7 @@ def process_ticker(ticker):
             return {
                 "failed": True,
                 "ticker": ticker,
-                "reason": Only one class in training data
+                "reason": "Only one class in training data"
             }
         scale_pos_weight = neg_count / pos_count
 
