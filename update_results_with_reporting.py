@@ -195,7 +195,7 @@ def refresh_dataset(name, cfg):
             print(f"No valid results for {name}")
 
         if failed_tickers:
-        failed_df = pd.DataFrame(failed_tickers)
+            failed_df = pd.DataFrame(failed_tickers)
 
         if FAILED_FILE.exists():
             try:
