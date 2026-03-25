@@ -15,7 +15,7 @@ DATASETS = {
 PERF_FILE = BASE_DIR / "performance_history.csv"
 WEEKLY_FILE = BASE_DIR / "weekly_summary.csv"
 BENCH_FILE = BASE_DIR / "benchmark_summary.csv"
-FAILED_FILE = BASE_DIR / "failed_ticker.csv"
+FAILED_FILE = BASE_DIR / "failed_tickers.csv"
 
 def compute_rsi(close, window=14):
     close = pd.to_numeric(close, errors="coerce")
@@ -87,7 +87,11 @@ def process_ticker(ticker):
     try:
         data = download_one(ticker, "2y")
         if data.empty or any(c not in data.columns for c in ["Date","Open","High","Low","Close","Volume"]):
-            return None
+            return {
+                "failed": True,
+                "ticker": ticker,
+                "reason": "No price data found"
+            }
         data["Ticker"] = ticker
         data = build_features(data)
         feature_cols = ["Return_5d","Return_10d","Momentum_20","Volatility_30","Trend_MA50","Z_Score_20","Volume_MA_Ratio","RSI_14"]
@@ -144,7 +148,7 @@ def append_rows(path, rows):
 
 def refresh_dataset(name, cfg):
     tickers = load_tickers(cfg["tickers_file"], cfg["max_tickers"])
-    results = [] 
+    results = []
     perf_rows = []
     failed_tickers = []
     pick_date = datetime.now(timezone.utc).date().isoformat()
@@ -152,8 +156,8 @@ def refresh_dataset(name, cfg):
     for ticker in tickers:
         print(f"Processing {ticker}...")
         item = process_ticker(ticker)
-        
-        if item is not None:
+
+        if item is None:
             failed_tickers.append({
                 "Ticker": ticker,
                 "Reason": "No data returned"
@@ -166,9 +170,16 @@ def refresh_dataset(name, cfg):
                 "Reason": item["reason"]
             })
             continue
-                                   
+
+        if not isinstance(item, dict) or "result" not in item:
+            failed_tickers.append({
+                "Ticker": ticker,
+                "Reason": "Invalid return structure"
+            })
+            continue
+
         results.append(item["result"])
-        
+
         if item["result"].get("Rating") == "Strong Buy":
             perf = item["perf"]
             perf["market"] = name
@@ -176,7 +187,6 @@ def refresh_dataset(name, cfg):
             perf["rating"] = item["result"].get("Rating")
             perf_rows.append(perf)
 
-    
     if results:
         results_df = pd.DataFrame(results)
         results_df.to_csv(cfg["output_file"], index=False)
@@ -194,9 +204,9 @@ def refresh_dataset(name, cfg):
         failed_df.drop_duplicates(subset=["Ticker"], inplace=True)
         failed_df.to_csv(FAILED_FILE, index=False)
         print(f"Saved {len(failed_df)} failed tickers to {FAILED_FILE}")
-            
-    return perf_rows
 
+    return perf_rows
+    
 def build_weekly_summary():
     if not PERF_FILE.exists():
         return
