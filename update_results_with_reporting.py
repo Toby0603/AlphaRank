@@ -144,12 +144,13 @@ def append_rows(path, rows):
 
 def refresh_dataset(name, cfg):
     tickers = load_tickers(cfg["tickers_file"], cfg["max_tickers"])
-    results, perf_rows = [], []
+    results = [] 
+    perf_rows = []
+    failed_tickers = []
     pick_date = datetime.now(timezone.utc).date().isoformat()
 
-    failed_tickers = []
-    
     for ticker in tickers:
+        print(f"Processing {ticker}...")
         item = process_ticker(ticker)
         
         if item is not None:
@@ -175,10 +176,13 @@ def refresh_dataset(name, cfg):
             perf["rating"] = item["result"].get("Rating")
             perf_rows.append(perf)
 
-    results_df = pd.DataFrame(results)
-    results_df.to_csv(cfg["output_file"], index=False)
-
-    print(f"Saved {len(results)} rows to {cfg['output_file']}")
+    
+    if results:
+        results_df = pd.DataFrame(results)
+        results_df.to_csv(cfg["output_file"], index=False)
+        print(f"Saved {len(results)} rows to {cfg['output_file']}")
+    else:
+        print(f"No valid results for {name}")
 
     if failed_tickers:
         failed_df = pd.DataFrame(failed_tickers)
@@ -189,7 +193,6 @@ def refresh_dataset(name, cfg):
 
         failed_df.drop_duplicates(subset=["Ticker"], inplace=True)
         failed_df.to_csv(FAILED_FILE, index=False)
-
         print(f"Saved {len(failed_df)} failed tickers to {FAILED_FILE}")
             
     return perf_rows
