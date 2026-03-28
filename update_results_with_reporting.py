@@ -306,7 +306,7 @@ def process_ticker(ticker):
         end_idx = latest_idx + 5 if (latest_idx + 5) in data.index else None
         end_close_5d = float(data.loc[end_idx, "Close"]) if end_idx is not None else None
         forward_return_5d_pct = (((end_close_5d / latest_price) - 1) * 100) if end_close_5d is not None else None
-        hit = 1 if (forward_return_5d_pct is not None and forward_return_5d_pct > 2.0) else 0 if forward_return_5d_pct is not None else None
+        hit = 1 if (forward_return_5d_pct is not None and forward_return_5d_pct > 1.5) else 0 if forward_return_5d_pct is not None else None
 
         return {
             "result": {
