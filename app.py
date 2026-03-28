@@ -395,14 +395,13 @@ with tabs[0]:
 
             st.markdown("### About the Model")
             st.markdown(
-                "- Scores are generated using historical price-based features and machine learning.
-"
-                "- Outputs reflect statistical patterns in past data and are not predictions of future performance.
-"
-                "- Higher scores indicate stronger model signals based on historical relationships.
-
-"
-                "This tool is designed for research and screening purposes only."
+                """
+                - Scores are generated using historical price-based features and machine learning.
+                - Outputs reflect statistical patterns in past data and are not predictions of future performance.
+                - Higher scores indicate stronger model signals based on historical relationships.
+                
+                This tool is designed for research and screening purposes only.
+                """
             )
 
 with tabs[1]:
