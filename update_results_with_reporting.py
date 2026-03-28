@@ -79,12 +79,12 @@ def rating_from_score(score):
     if pd.isna(score):
         return ""
     if score >= 70:
-        return "Strong Buy"
+        return "Top Ranked"
     if score >= 60:
-        return "Watchlist"
+        return "Above Average"
     if score >= 50:
         return "Neutral"
-    return "Avoid/Short"
+    return "Below Average"
 
 
 def build_features(df):
@@ -397,7 +397,7 @@ def refresh_dataset(name, cfg):
 
         results.append(item["result"])
 
-        if item["result"].get("Rating") == "Strong Buy":
+        if item["result"].get("Rating") == "Top Ranked":
             perf = item["perf"]
             perf["market"] = name
             perf["pick_date"] = pick_date
