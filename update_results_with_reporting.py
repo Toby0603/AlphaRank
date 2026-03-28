@@ -345,16 +345,56 @@ def process_ticker(ticker):
 
 
 def append_rows(path, rows):
+    """
+    Append new rows to CSV and dedupe on:
+    -Pick date
+    -Ticker
+    -Start_close
+    """
     if not rows:
         return
 
     new_df = pd.DataFrame(rows)
 
     if path.exists():
-        old_df = pd.read_csv(path)
-        new_df = pd.concat([old_df, new_df], ignore_index=True)
+        try:
+            old_df = pd.read_csv(path)
+            combined = pd.concat([old_df, new_df], ignore_index=True)
+        except pd.errors.EmptyDataError:
+            combined = new_df.copy()
+    else:
+        combined = new_df.copy()
 
-    new_df.to_csv(path, index=False)
+    key_cols = ["pick_date", "ticker", "start_close"]
+
+    if all(col in combined.columns for col in key_cols):
+        combined["pick_date"] = combined["pick_date"].astype(str)
+        combined["Ticker"] = combined["Ticker"].astype(str).str.strip().str.upper()
+        combined["start_close"] = pd.to_numeric(combined["start_close"], errors="coerce"),round(6)
+        combined["_has_end_close"] = combined["end_close_5d"].notna().astype(int) if "end_close_5d" in combined.columns else 0 
+        combined["_has_forward_ret"] = combined["forward_return_5d_pct"].notna().astype(int) if "forward_return_5d_pct" in combined.columns else 0 
+        combined["_has_hit"] = combined["hit"].notna().astype(int) if "hit" in combined.columns else 0 
+        combined["_row_order"] = range(len(combined))
+        combined = combined.sort_values(
+            by=[
+                "pick_date",
+                "Ticker",
+                "start_close",
+                "_has_end_close",
+                "_has_forward_ret",
+                "_has_hit",
+                "_row_order",
+            ],
+            ascending = [True, True, True, True, True, True, True],
+        )
+
+        combined = combined.drop_duplicates(subset=key_cols, keep="last")
+        combined = combined.drop(
+            columns=["_has_end_close", "_has_forward_ret", "_has_hit", "_row_order"],
+            errors="ignore",
+        )
+
+    combined.to_csv(path, index=False)
 
 
 def refresh_dataset(name, cfg):
