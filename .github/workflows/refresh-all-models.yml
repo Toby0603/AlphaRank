@@ -1,0 +1,50 @@
+
+name: Refresh All Model Results
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-all-models:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas yfinance scikit-learn xgboost catboost lightgbm
+
+      - name: Run XGBoost backend
+        run: python update_results_xgboost.py
+
+      - name: Run CatBoost backend
+        run: python update_results_catboost.py
+
+      - name: Run LightGBM backend
+        run: python update_results_lightgbm.py
+
+      - name: Commit updated outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results_xgboost.csv results_catboost.csv results_lightgbm.csv performance_history.csv failed_tickers.csv
+          git diff --staged --quiet || git commit -m "Auto-refresh all model results"
+
+      - name: Push changes
+        run: git push
