@@ -16,7 +16,7 @@ MARKETS = {
     "europe": {"tickers_file": BASE_DIR / "tickers_europe.csv", "max_tickers": 300},
 }
 
-PERF_FILE = BASE_DIR / "performance_history.csv"
+PERF_FILE = BASE_DIR / "Top_Ranked_Model_Tracker.csv"
 FAILED_FILE = BASE_DIR / "failed_tickers.csv"
 
 def compute_rsi(close, window=14):
