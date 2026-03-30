@@ -29,6 +29,7 @@ EKT.L,No price data found,xgboost
 GIL.L,No price data found,xgboost
 SPT.L,No price data found,xgboost
 UBM.L,No price data found,xgboost
+WHR.L,No price data found,xgboost
 SXS.L,No price data found,xgboost
 MMC,No price data found,xgboost
 DFS,No price data found,xgboost
@@ -50,6 +51,7 @@ EKT.L,No price data found,catboost
 GIL.L,No price data found,catboost
 SPT.L,No price data found,catboost
 UBM.L,No price data found,catboost
+WHR.L,No price data found,catboost
 SXS.L,No price data found,catboost
 MMC,No price data found,catboost
 DFS,No price data found,catboost
@@ -71,6 +73,7 @@ EKT.L,No price data found,lightgbm
 GIL.L,No price data found,lightgbm
 SPT.L,No price data found,lightgbm
 UBM.L,No price data found,lightgbm
+WHR.L,No price data found,lightgbm
 SXS.L,No price data found,lightgbm
 MMC,No price data found,lightgbm
 DFS,No price data found,lightgbm
