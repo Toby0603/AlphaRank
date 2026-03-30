@@ -71,6 +71,10 @@ def build_features(df):
     df["RSI_14"] = compute_rsi(df["Close"], 14)
     df["forward_return_5d"] = df["Close"].shift(-5) / df["Close"] - 1
     df["Target"] = (df["forward_return_5d"] > 0.015).astype(int)
+    df["RSI_x_Trend"] = df["RSI_14"] * df["Trend_MA50"]
+    df["RSI_x_VoL"] = df["RSI_14"] * df["Volatility_30"]
+    df["Momentum_x_Vol"] = df["Momentum_20"] * df["Volatility_30"]
+    df["Trend_x_Vol"] = df["Trend_MA50"] * df["Volatility_30"]
     return df
 
 def load_all_tickers():
@@ -167,7 +171,7 @@ def process_ticker(ticker, model_name):
             return {"failed": True, "ticker": ticker, "reason": "No price data found"}
         data["Ticker"] = ticker
         data = build_features(data)
-        feature_cols = ["Return_5d","Return_10d","Momentum_20","Volatility_30","Trend_MA50","Z_Score_20","Volume_MA_Ratio","RSI_14"]
+        feature_cols = ["Return_5d","Return_10d","Momentum_20","Volatility_30","Trend_MA50","Z_Score_20","Volume_MA_Ratio","RSI_14","RSI_x_Trend","RSI_x_VoL","Momentum_x_Vol","Trend_x_Vol"]
         for col in feature_cols:
             data[col] = pd.to_numeric(data[col], errors="coerce")
         data["Target"] = pd.to_numeric(data["Target"], errors="coerce")
