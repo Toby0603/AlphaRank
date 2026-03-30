@@ -180,7 +180,7 @@ def process_ticker(ticker, model_name):
         data["Ticker"] = ticker
         data = build_features(data)
         
-        feature_cols = FEATURE_SETS[feature_set_name
+        feature_cols = FEATURE_SETS[feature_set_name]
         
         for col in feature_cols:
             data[col] = pd.to_numeric(data[col], errors="coerce")
