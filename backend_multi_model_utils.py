@@ -10,9 +10,9 @@ from lightgbm import LGBMClassifier
 BASE_DIR = Path(__file__).resolve().parent
 
 MARKETS = {
-    "ftse": {"tickers_file": BASE_DIR / "tickers_ftse.csv", "max_tickers": 300},
-    "us": {"tickers_file": BASE_DIR / "tickers_us.csv", "max_tickers": 300},
-    "europe": {"tickers_file": BASE_DIR / "tickers_europe.csv", "max_tickers": 300},
+    "ftse": {"tickers_file": BASE_DIR / "tickers_ftse.csv", "max_tickers": 50},
+    "us": {"tickers_file": BASE_DIR / "tickers_us.csv", "max_tickers": 50},
+    "europe": {"tickers_file": BASE_DIR / "tickers_europe.csv", "max_tickers": 50},
 }
 
 TRACKER_FILE = BASE_DIR / "Top_Ranked_model_tracker.csv"
