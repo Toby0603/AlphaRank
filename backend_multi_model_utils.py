@@ -346,7 +346,7 @@ def run_variant(model_name, feature_set_name, output_file):
     pick_date = datetime.now(timezone.utc).date().isoformat()
 
     variant_name = f"{model_name}_{feature_set_name}"
-    print(f"Running {varinat_name} across {len(tickers)} tickers")
+    print(f"Running {variant_name} across {len(tickers)} tickers")
     
     for ticker in tickers:
         print(f"Processing {ticker} [{variant_name}]...")
