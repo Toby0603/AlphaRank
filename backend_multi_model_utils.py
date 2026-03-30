@@ -16,8 +16,16 @@ MARKETS = {
     "europe": {"tickers_file": BASE_DIR / "tickers_europe.csv", "max_tickers": 300},
 }
 
-PERF_FILE = BASE_DIR / "Top_Ranked_Model_Tracker.csv"
+TRACKER_FILE = BASE_DIR / "Top_Ranked_Model_Tracker.csv"
 FAILED_FILE = BASE_DIR / "failed_tickers.csv"
+COMPARISON_FILE = BASE_DIR / "model_feature_comparison.csv"
+
+BASE_FEATURE_COLS = ["Return_5d","Return_10d","Momentum_20","Volatility_30","Trend_MA50","Z_Score_20","Volume_MA_Ratio","RSI_14"]
+INTERACTION_FEATURE_COLS = ["RSI_x_Trend","RSI_x_VoL","Momentum_x_Vol","Trend_x_Vol"]
+FEATURE_SETS = {
+    "base": BASE_FEATURE_COLS,
+    "interactions": BASE_FEATURE_COLS + INTERACTION_FEATURE_COLS,
+}
 
 def compute_rsi(close, window=14):
     close = pd.to_numeric(close, errors="coerce")
@@ -171,34 +179,43 @@ def process_ticker(ticker, model_name):
             return {"failed": True, "ticker": ticker, "reason": "No price data found"}
         data["Ticker"] = ticker
         data = build_features(data)
-        feature_cols = ["Return_5d","Return_10d","Momentum_20","Volatility_30","Trend_MA50","Z_Score_20","Volume_MA_Ratio","RSI_14","RSI_x_Trend","RSI_x_VoL","Momentum_x_Vol","Trend_x_Vol"]
+        
+        feature_cols = FEATURE_SETS[feature_set_name
+        
         for col in feature_cols:
             data[col] = pd.to_numeric(data[col], errors="coerce")
         data["Target"] = pd.to_numeric(data["Target"], errors="coerce")
+        
         model_data = data.dropna(subset=feature_cols + ["Target"]).copy()
         if len(model_data) < 120:
             return {"failed": True, "ticker": ticker, "reason": "Not enough cleaned rows"}
+            
         X = model_data[feature_cols]
         y = model_data["Target"]
+        
         validation_result = walk_forward_validate(X, y, feature_cols, model_name)
         if validation_result is None:
             return {"failed": True, "ticker": ticker, "reason": "Not enough data for walk-forward validation"}
+            
         model = validation_result["model"]
         accuracy_pct = float(validation_result["metrics"]["Accuracy (%)"])
         precision_pct = float(validation_result["metrics"]["Precision (%)"])
         recall_pct = float(validation_result["metrics"]["Recall (%)"])
         f1_pct = float(validation_result["metrics"]["F1 Score (%)"])
+        
         latest_features = X.tail(1)
         latest_price = float(model_data["Close"].iloc[-1])
         prob_up = float(model.predict_proba(latest_features)[0][1]) * 100
         latest_return_1d = float(model_data["Return_1d"].iloc[-1])
         latest_volatility_30 = float(model_data["Volatility_30"].iloc[-1])
         latest_rsi = float(model_data["RSI_14"].iloc[-1])
+        
         if hasattr(model, "feature_importances_"):
             importances = pd.Series(model.feature_importances_, index=feature_cols)
             top_features = ", ".join(importances.sort_values(ascending=False).head(3).index.tolist())
         else:
             top_features = ", ".join(feature_cols[:3])
+            
         score = score_row(pd.Series({
             "Predicted Prob Up (%)": prob_up,
             "Accuracy (%)": accuracy_pct,
@@ -206,11 +223,13 @@ def process_ticker(ticker, model_name):
             "F1 Score (%)": f1_pct,
             "RSI_14": latest_rsi,
         }))
+        
         latest_idx = model_data.index[-1]
         end_idx = latest_idx + 5 if (latest_idx + 5) in data.index else None
         end_close_5d = float(data.loc[end_idx, "Close"]) if end_idx is not None else None
         forward_return_5d_pct = (((end_close_5d / latest_price) - 1) * 100) if end_close_5d is not None else None
-        hit = 1 if (forward_return_5d_pct is not None and forward_return_5d_pct > 2.0) else 0 if forward_return_5d_pct is not None else None
+        hit = 1 if (forward_return_5d_pct is not None and forward_return_5d_pct > 1.5) else 0 if forward_return_5d_pct is not None else None
+        
         return {
             "result": {
                 "Ticker": ticker,
@@ -227,6 +246,7 @@ def process_ticker(ticker, model_name):
                 "Score": score,
                 "Rating": rating_from_score(score),
                 "Model": model_name,
+                "Feature_Set": feature_set_name,
             },
             "perf": {
                 "Ticker": ticker,
@@ -237,6 +257,7 @@ def process_ticker(ticker, model_name):
                 "forward_return_5d_pct": forward_return_5d_pct,
                 "hit": hit,
                 "model": model_name,
+                "Feature_Set": feature_set_name,
             },
         }
     except Exception as e:
@@ -245,16 +266,20 @@ def process_ticker(ticker, model_name):
 def append_performance_rows(rows):
     if not rows:
         return
+        
     new_df = pd.DataFrame(rows)
-    if PERF_FILE.exists():
+    
+    if TRACKER_FILE.exists():
         try:
-            old_df = pd.read_csv(PERF_FILE)
+            old_df = pd.read_csv(TRACKER_FILE)
             combined = pd.concat([old_df, new_df], ignore_index=True)
         except pd.errors.EmptyDataError:
             combined = new_df.copy()
     else:
         combined = new_df.copy()
+        
     key_cols = ["pick_date", "Ticker", "start_close", "model"]
+    
     if all(col in combined.columns for col in key_cols):
         combined["pick_date"] = combined["pick_date"].astype(str)
         combined["Ticker"] = combined["Ticker"].astype(str).str.strip().str.upper()
@@ -267,7 +292,7 @@ def append_performance_rows(rows):
         combined = combined.sort_values(by=key_cols + ["_has_end_close","_has_forward_ret","_has_hit","_row_order"], ascending=True)
         combined = combined.drop_duplicates(subset=key_cols, keep="last")
         combined = combined.drop(columns=["_has_end_close","_has_forward_ret","_has_hit","_row_order"], errors="ignore")
-    combined.to_csv(PERF_FILE, index=False)
+    combined.to_csv(TRACKER_FILE, index=False)
 
 def append_failed_rows(rows):
     if not rows:
@@ -286,34 +311,98 @@ def append_failed_rows(rows):
         combined = combined.drop_duplicates(subset=dedupe_cols, keep="last")
     combined.to_csv(FAILED_FILE, index=False)
 
-def run_model(model_name, output_file):
+def save_comparison_summary(all_results):
+    rows = []
+
+    for variant_name, df in all_results.item():
+        if df.empty:
+            continue
+
+        model_name, feature_set_name = variant_name.split("_", 1)
+
+        row = {
+            "variant": variant_name,
+            "model": model_name,
+            "feature_set": feature_set_name,
+            "stocks": len(df),
+            "avg_score":df["Score"].mean() if "Score" in df.columns else None,
+            "avg_probability":df["Predicted Prob Up (%)"].mean() if "Predicted Prob Up (%)" in df.columns else None,
+            "avg_accuracy":df["Accuracy (%)"].mean() if "Accuracy (%)" in df.columns else None,
+            "avg_precision":df["Presision (%)"].mean() if "Presision (%)" in df.columns else None,
+            "avg_recall":df["Recall (%)"].mean() if "Recall (%)" in df.columns else None,
+            "avg_f1":df["F1 Score (%)"].mean() if "F1 Score (%)" in df.columns else None,
+            "top_ranked_count": (df["Rating"] == "Top Ranked").sum() if "Rating" in df.columns else None,
+        }
+        rows.append(row)
+
+    if rows:
+        pd.DataFrame(rows).sort_values(["model", "feature_set"]).to_csv(COMPARISON_FILE, index=False)
+        
+
+
+def run_variant(model_name, feature_set_name, output_file):
     tickers = load_all_tickers()
     results, perf_rows, failed_rows = [], [], []
     pick_date = datetime.now(timezone.utc).date().isoformat()
-    print(f"Running {model_name} across {len(tickers)} tickers")
+
+    variant_name = f"{model_name}_{feature_set_name}"
+    print(f"Running {varinat_name} across {len(tickers)} tickers")
+    
     for ticker in tickers:
-        print(f"Processing {ticker} [{model_name}]...")
-        item = process_ticker(ticker, model_name)
+        print(f"Processing {ticker} [{variant_name}]...")
+        item = process_ticker(ticker, model_name, feature_set_name)
+        
         if item is None:
-            failed_rows.append({"Ticker": ticker, "Reason": "No data returned", "model": model_name})
+            failed_rows.append({"Ticker": ticker, "Reason": "No data returned", "model": model_name, "feature_set": feature_set_name,})
             continue
+            
         if isinstance(item, dict) and item.get("failed"):
-            failed_rows.append({"Ticker": item["ticker"], "Reason": item["reason"], "model": model_name})
+            failed_rows.append({"Ticker": item["ticker"], "Reason": item["reason"], "model": model_name, "feature_set": feature_set_name,})
             continue
+            
         if not isinstance(item, dict) or "result" not in item:
-            failed_rows.append({"Ticker": ticker, "Reason": "Invalid return structure", "model": model_name})
+            failed_rows.append({"Ticker": ticker, "Reason": "Invalid return structure", "model": model_name, "feature_set": feature_set_name,})
             continue
+            
         results.append(item["result"])
+        
         if item["result"].get("Rating") == "Top Ranked":
             perf = item["perf"]
             perf["pick_date"] = pick_date
             perf_rows.append(perf)
+            
     if results:
-        pd.DataFrame(results).sort_values(["Score", "Predicted Prob Up (%)"], ascending=False).to_csv(output_file, index=False)
+        results_df = pd.DataFrame(results).sort_values(["Score", "Predicted Prob Up (%)"], ascending=False)
+        results_df.to_csv(output_file, index=False)
         print(f"Saved {len(results)} rows to {output_file}")
     else:
+        results_df = pd.DataFrame()
         print(f"No valid results for {model_name}")
-    append_performance_rows(perf_rows)
+        
+    append_performance_rows(tracker_rows)
     append_failed_rows(failed_rows)
     print(f"Appended {len(perf_rows)} performance rows for {model_name}")
     print(f"Appended {len(failed_rows)} failed rows for {model_name}")
+
+    return results_df
+
+def run_all_variants():
+    all_results = {}
+
+    variants = [
+        ("xgboost", "base"),
+        ("xgboost", "interactions"),
+        ("catboost", "base"),
+        ("catboost", "interactions"),
+        ("lightgbm", "base"),
+        ("lightgbm", "interactions"),
+    ]
+
+    for model_name, feature_set_name in variants:
+        output_file = BASE_DIR / f"results_{model_name}_{feature_set_name}.csv"
+        df = run_variant(model_name, feature_set_name, output_file)
+        all_results[f"{model_name}_{feature_set_name}"] = df
+
+    save_comparsion_summary(all_results)
+    print(f"Saved comparsion summary to {COMPARISON_FILE}")
+        
