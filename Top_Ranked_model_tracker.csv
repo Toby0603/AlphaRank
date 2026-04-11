@@ -1,7 +1,7 @@
 Ticker,pick_prob_up,pick_score,start_close,end_close_5d,forward_return_5d_pct,hit,model,feature_set,pick_date
 ACA.PA,91.72919797753072,73.8,15.85,,,,lightgbm,interactions,2026-03-30
 ANTO.L,91.87980696210649,71.7,3161.0,,,,lightgbm,base,2026-03-30
-ANTO.L,93.06714939503169,73.7,3161.0,,,,lightgbm,interactions,2026-03-30
+ANTO.L,93.06714939503168,73.7,3161.0,,,,lightgbm,interactions,2026-03-30
 DBK.DE,82.88397466851437,70.2,25.01,,,,catboost,base,2026-03-30
 DBK.DE,83.32484436646196,72.1,25.01,,,,catboost,interactions,2026-03-30
 DBK.DE,91.00023564162896,71.4,25.01,,,,lightgbm,base,2026-03-30
@@ -17,3 +17,11 @@ SAP.DE,83.71968457364065,70.2,147.020004,,,,catboost,base,2026-03-30
 UNH,88.97693527648117,70.7,259.88501,,,,lightgbm,interactions,2026-03-30
 UNH,86.86486465563222,71.8,259.895508,,,,lightgbm,base,2026-03-30
 UNH,87.29769736896102,71.9,260.334991,,,,catboost,base,2026-03-30
+ADBE,74.52318668365479,70.5,225.350006,,,,xgboost,base,2026-04-11
+NOW,94.7672428963491,75.6,83.0,,,,catboost,base,2026-04-11
+NOW,93.97236891269463,73.3,83.0,,,,catboost,interactions,2026-04-11
+NOW,88.45299085200217,71.3,83.0,,,,lightgbm,base,2026-04-11
+NOW,89.69009478610685,72.8,83.0,,,,lightgbm,interactions,2026-04-11
+NOW,89.36489224433899,71.6,83.0,,,,xgboost,base,2026-04-11
+SAP.DE,94.20296263947677,71.6,139.380005,,,,catboost,interactions,2026-04-11
+SAP.DE,91.64672015188944,70.6,139.380005,,,,lightgbm,base,2026-04-11
