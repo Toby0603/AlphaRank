@@ -190,3 +190,4 @@ pick_date,market,Ticker,pick_prob_up,pick_score,start_close,end_close_5d,forward
 2026-04-15,us,NOW,85.67512035369873,72.0,87.79000091552734,,,,Top Ranked
 2026-04-16,us,ADM,86.77735328674316,71.0,66.94999694824219,,,,Top Ranked
 2026-04-20,ftse,IMB.L,80.85383772850037,70.0,2802.0,,,,Top Ranked
+2026-04-21,ftse,IMB.L,85.90013980865479,72.6,2777.0,,,,Top Ranked
