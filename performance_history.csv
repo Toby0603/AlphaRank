@@ -193,3 +193,5 @@ pick_date,market,Ticker,pick_prob_up,pick_score,start_close,end_close_5d,forward
 2026-04-21,ftse,IMB.L,85.90013980865479,72.6,2777.0,,,,Top Ranked
 2026-04-22,ftse,IMB.L,87.5361442565918,72.5,2734.50341796875,,,,Top Ranked
 2026-04-23,ftse,BA.L,88.4027361869812,71.3,2052.0,,,,Top Ranked
+2026-04-24,ftse,BA.L,90.97087383270264,72.3,2046.0,,,,Top Ranked
+2026-04-24,us,LMT,82.98009634017944,73.3,529.7899780273438,,,,Top Ranked
